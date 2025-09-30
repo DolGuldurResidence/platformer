@@ -109,6 +109,16 @@ int main()
             isJumping = false;
         }
 
+        if (posX > screenWidth - 100) { // if out of screen by X axis
+            posX = screenWidth - 100;
+            velX = 0;
+        }
+
+        if (posX < 100) { // if out of screen by X axis
+            posX = 100;
+            velX = 0;
+        }
+
         shape.setPosition(sf::Vector2f(posX, posY)); //set new position for for shape
          
         
