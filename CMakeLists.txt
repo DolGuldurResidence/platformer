@@ -1,35 +1,17 @@
-cmake_minimum_required(VERSION 3.15) # Проверка версии CMake.
-									 # Если версия установленой программы
-									 # старее указаной, произайдёт аварийный выход.
+cmake_minimum_required(VERSION 3.28)
+project(platformer LANGUAGES CXX)
 
-set(PROJECT_NAME sfml_sample)				 # имя проекта		 
-project("${PROJECT_NAME}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+include(FetchContent)
+FetchContent_Declare(SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG 3.0.2
+    GIT_SHALLOW ON
+    EXCLUDE_FROM_ALL
+    SYSTEM)
+FetchContent_MakeAvailable(SFML)
 
-set(CMAKE_CXX_STANDARD 17)			 # устанавливаем 17 стандарт языка
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-
-
-add_definitions(-DSFML_STATIC)		 # дефайны
-
-include_directories("inc/")
-
-include_directories("ext/SFML/include/")
-link_directories("ext/SFML/lib/")	
-
-add_executable("${PROJECT_NAME}" main.cpp)
-											
-target_link_libraries("${PROJECT_NAME}" sfml-graphics-s-d
-						  sfml-window-s-d
-						  sfml-system-s-d
-						  opengl32
-						  freetype
-						  winmm
-						  gdi32
-						  sfml-audio-s-d
-						  flac
-						  vorbisenc
-						  vorbisfile
-						  vorbis
-						  ogg)
+add_executable(main src/main.cpp)
+target_compile_features(main PRIVATE cxx_std_17)
+target_link_libraries(main PRIVATE SFML::Graphics)
