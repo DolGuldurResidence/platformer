@@ -3,9 +3,6 @@
 #include <player.hpp>
 #include <obstruction.hpp>
 
-
-using namespace std;
-
 int main()
 {
     const unsigned screenWidth = 800;
@@ -15,7 +12,7 @@ int main()
     window.setFramerateLimit(60);
 
     // Create player in the center of screen
-    Player player(screenWidth / 2, screenHeight / 2);
+    Player player(0,screenHeight - 100);
 
     sf::Clock clock;
 
@@ -36,6 +33,7 @@ int main()
         player.move(dt);
         
         // Apply collisions
+        player.applyObstructionCollision(jumpPad.getPositionX(), jumpPad.getPositionY(), 100, 20);
         player.applyFloorCollision(screenHeight);
         player.applyWallCollision(0, screenWidth);
 
