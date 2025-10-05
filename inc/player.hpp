@@ -40,29 +40,24 @@ public:
         shape.setOrigin(sf::Vector2f(shapeRadius, shapeRadius)); // Center origin for rotation and positioning
         shape.setPosition(sf::Vector2f(posX, posY)); // Initial position of the shpape
     }
-    
+
     void jump() {
-         //first jump
             isJumping = true; // mark as jumping
             jumpClock.restart(); // restart jump timer
-            velY = jumpPower; // apply jump power
-        
+            velY = jumpPower; // apply jump power    
     }
     
     void handleInput() {
-        // Handle jumping
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !isJumping) {
             jump();
         }
         
-        // Handle horizontal movement
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) {
-            acceleration = 50.f;
-            velX += acceleration;
+            goRight();
         }
         else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) {
-            acceleration = -50.f;
-            velX += acceleration;
+            goLeft();
         }
         else {
             velX *= friction; // apply friction when no key is pressed
@@ -80,8 +75,19 @@ public:
         }
     }
     
-    void move(float dt) { 
-        // Apply gravity
+
+    //TODO
+    std::vector<int> boundigBox() const {
+        return {
+            static_cast<int>(posX - shapeRadius),
+            static_cast<int>(posY - shapeRadius),
+            static_cast<int>(shapeRadius * 2),
+            static_cast<int>(shapeRadius * 2)
+        };
+    }
+    
+    void move(float dt) {
+        // Apply gravity if not on ground or platform 
         if(!onObstruction) velY += gravity;
         
         // Update position based on velocity
@@ -90,8 +96,19 @@ public:
         
         shape.setPosition(sf::Vector2f( posX, posY));
     }
-    
 
+    void goRight() {
+        acceleration = 50.f;
+        velX += acceleration;
+    };
+    
+    void goLeft() {
+        acceleration = -50.f;
+        velX += acceleration;
+    };
+
+
+    //TODO
     void applyObstructionCollision(float obsX, float obsY, float obsW, float obsH) {
         if (posX >= obsX && posX <= obsX + obsW && posY + shapeRadius >= obsY){
             posY = obsY - shapeRadius;
@@ -99,12 +116,6 @@ public:
             isJumping = false;
             isSecJump = false;
             onObstruction = true;
-            //std::cout << "y_obstruction " << obsY << std::endl;
-            //std::cout << "player_y " << posY << std::endl;
-            //std::cout << "player_x " << posX << std::endl; 
-            //std::cout << "x_obstruction " << obsX << std::endl;
-
-
         }
         else {
             onObstruction = false;

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <player.hpp>
 #include <obstruction.hpp>
+#include <game.hpp>
 
 int main()
 {
