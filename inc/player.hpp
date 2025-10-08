@@ -1,155 +1,207 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <iostream>
-    
 
+const float SHAPE_RADIUS = 50.f;
+const float GRAVITY = 1500.f;        
+const float MAX_SPEED_X = 600.f;    
+const float ACCELERATION = 2000.f;   
+const float FRICTION = 0.8f;    
+const float JUMP_POWER = -700.f;     
+const float JUMP_DURATION = 0.5f;    
 
 class Player {
 private:
-    sf::CircleShape shape; // Player represented as a circle 
+    sf::CircleShape shape;
     float posX, posY;   
     float velX, velY;   
+    
     float gravity;
     float maxSpeedX;
     float acceleration;
     float friction;
+
     float jumpPower;
-    
-    bool onObstruction;
-    bool isJumping;
-    bool isSecJump;
-    sf::Clock jumpClock;
-    
-    float shapeRadius = 50.f;
-    float jumpDuration = 500.f;
+    bool isOnGround;
+    bool canDoubleJump;
+    float jumpTimer;
 
 public:
-    Player(float startX, float startY) 
-        : posX(startX), posY(startY), //init position 
-          velX(0), velY(0), // init velocity as zero (no movement at start)
-          gravity(50.f),    // gravity force, using in jump and fall;
-          maxSpeedX(600.f), // max horizontal speed <- ->
-          acceleration(0.f), //init acceleration for smooth start/stop
-          friction(0.9f),  // friction factor for air resistance
-          jumpPower(-1000.f), // initial jump velocity
-          isJumping(false), // is player in the air after jump
-          isSecJump(false), // is second jump used, for double jump
-          onObstruction(false) // is player on the ground or platform    
-    {
-        shape.setRadius(shapeRadius); // Player size
-        shape.setOrigin(sf::Vector2f(shapeRadius, shapeRadius)); // Center origin for rotation and positioning
-        shape.setPosition(sf::Vector2f(posX, posY)); // Initial position of the shpape
+
+    Player(const float& startX, const float& startY) {
+        setPosition(startX, startY);
+        setVelocity(0,0);
+        setGravity(GRAVITY);
+        setMaxSpeed(MAX_SPEED_X);
+        setAcceleration(ACCELERATION);
+        setFriction(FRICTION);
+        setJumpPower(JUMP_POWER);
+        setJumpTimer(0.f);
+
+        shape.setRadius(SHAPE_RADIUS);
+        shape.setOrigin(sf::Vector2f(SHAPE_RADIUS, SHAPE_RADIUS));
+        shape.setPosition(sf::Vector2f(posX, posY));
     }
 
-    void jump() {
-            isJumping = true; // mark as jumping
-            jumpClock.restart(); // restart jump timer
-            velY = jumpPower; // apply jump power    
-    }
-    
-    void handleInput() {
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && !isJumping) {
-            jump();
-        }
-        
+    //обработчик кнопок, dt~0.016 
+    void handleInput(const float& dt) {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)) {
-            goRight();
+            velX += acceleration * dt; // velx ~ 630;
         }
         else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)) {
-            goLeft();
+            velX -= acceleration * dt;
         }
         else {
-            velX *= friction; // apply friction when no key is pressed
+            velX *= friction;
         }
         
-        // Speed limits
         if (velX > maxSpeedX) velX = maxSpeedX;
         if (velX < -maxSpeedX) velX = -maxSpeedX;
-        
-        // Handle jump completion
-        if (isJumping && jumpClock.getElapsedTime().asMilliseconds() >= jumpDuration && !isSecJump) {
-            isJumping = false;
-            isSecJump = true;
-            std::cout << isSecJump << std::endl;    
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space)) {
+            if (isOnGround) {
+                jump();
+            }
+            else if (canDoubleJump && jumpTimer <= 0.f) {
+                jump();
+                canDoubleJump = false;
+            }
+        }
+
+        if (jumpTimer > 0) {
+            jumpTimer -= dt;
         }
     }
-    
-
-    //TODO
-    std::vector<int> boundigBox() const {
-        return {
-            static_cast<int>(posX - shapeRadius),
-            static_cast<int>(posY - shapeRadius),
-            static_cast<int>(shapeRadius * 2),
-            static_cast<int>(shapeRadius * 2)
-        };
-    }
-    
-    void move(float dt) {
-        // Apply gravity if not on ground or platform 
-        if(!onObstruction) velY += gravity;
         
-        // Update position based on velocity
-        posY += velY * dt;
+    void update(const float& dt) {
+        if (!isOnGround) {
+            velY += gravity * dt;
+        }
+
         posX += velX * dt;
+        posY += velY * dt;
         
         shape.setPosition(sf::Vector2f( posX, posY));
     }
 
-    void goRight() {
-        acceleration = 50.f;
-        velX += acceleration;
-    };
-    
-    void goLeft() {
-        acceleration = -50.f;
-        velX += acceleration;
-    };
-
-
-    //TODO
-    void applyObstructionCollision(float obsX, float obsY, float obsW, float obsH) {
-        if (posX >= obsX && posX <= obsX + obsW && posY + shapeRadius >= obsY){
-            posY = obsY - shapeRadius;
-            velY = 0;
-            isJumping = false;
-            isSecJump = false;
-            onObstruction = true;
-        }
-        else {
-            onObstruction = false;
-        }   
+    void jump() {
+        velY = jumpPower;
+        isOnGround = false;
+        jumpTimer = JUMP_DURATION;
     }
 
+    void applyObstructionCollision(const float& obsX, const float& obsY, 
+        const float& obsW,const float& obsH) {
+            
+        float playerLeft = posX - SHAPE_RADIUS;
+        float playerRight = posX + SHAPE_RADIUS;
+        float playerTop = posY - SHAPE_RADIUS;
+        float playerBottom = posY + SHAPE_RADIUS;
+        
+        float obstacleLeft = obsX;
+        float obstacleRight = obsX + obsW;
+        float obstacleTop = obsY;
+        float obstacleBottom = obsY + obsH;
+        
+        if (playerRight > obstacleLeft && 
+            playerLeft < obstacleRight && 
+            playerBottom > obstacleTop && 
+            playerTop < obstacleBottom) {
+
+            float overlapLeft = playerRight - obstacleLeft;
+            float overlapRight = obstacleRight - playerLeft;
+            float overlapTop = playerBottom - obstacleTop;
+            float overlapBottom = obstacleBottom - playerTop;
+            
+            float minOverlap = std::min(std::min(overlapLeft, overlapRight),
+            std::min( overlapTop, overlapBottom));
+            
+            if (minOverlap == overlapTop) {
+                posY = obstacleTop - SHAPE_RADIUS; 
+                velY = 0;
+                isOnGround = true;
+                canDoubleJump = true;
+            }
+            else if (minOverlap == overlapBottom) {
+                posY = obstacleBottom + SHAPE_RADIUS;
+                velY = 0;
+            }
+            else if (minOverlap == overlapLeft) {
+                posX = obstacleLeft - SHAPE_RADIUS;
+                velX = 0;
+            }
+            else if (minOverlap == overlapRight) {
+                posX = obstacleRight + SHAPE_RADIUS;
+                velX = 0;
+            }
+        }
+        else isOnGround = false; 
+    }
+
+
+
+
     void applyFloorCollision(float floorHeight) {
-        if (posY > floorHeight - 100) {
-            posY = floorHeight - 100;
+        if (posY + SHAPE_RADIUS > floorHeight) {
+            posY = floorHeight - SHAPE_RADIUS;
             velY = 0;
-            isJumping = false;
-            isSecJump = false;
-            onObstruction = true;
+            isOnGround = true;
+            canDoubleJump = true;
         }
     }
     
     void applyWallCollision(float leftBound, float rightBound) {
-        if (posX > rightBound - 100) {
-            posX = rightBound - 100;
+        if (posX - SHAPE_RADIUS < leftBound) {
+            posX = leftBound + SHAPE_RADIUS;
             velX = 0;
         }
-        
-        if (posX < leftBound + 100) {
-            posX = leftBound + 100;
+        else if (posX + SHAPE_RADIUS > rightBound) {
+            posX = rightBound - SHAPE_RADIUS;
             velX = 0;
         }
     }
     
+
     sf::CircleShape& getShape() { return shape; }
     float getPositionX() const { return posX; }
     float getPositionY() const { return posY; }
+    float getVelocityX() const { return velX; }
+    float getVelocityY() const { return velY; }
+    bool getIsOnGround() const { return isOnGround; }
+
+
+
     void setPosition(float x, float y) {
         posX = x;
         posY = y;
         shape.setPosition(sf::Vector2f(posX, posY));
     }
+    void setVelocity(float vx, float vy) {
+        velX = vx;
+        velY = vy;
+    }
+
+    void setGravity(float gravity){
+        this->gravity = gravity;
+    }
+
+    void setAcceleration(float acceleration) {
+        this->acceleration = acceleration;
+    }
+
+    void setMaxSpeed(float maxSpeed){
+        this->maxSpeedX = maxSpeed;
+    }
+
+    void setFriction(float friction){
+        this->friction = friction;
+    }
+
+    void setJumpPower(float jumpPower){
+        this->jumpPower = jumpPower;
+    }
+
+    void setJumpTimer(float jumpTimer){
+        this->jumpTimer = jumpTimer;
+    } 
 };
