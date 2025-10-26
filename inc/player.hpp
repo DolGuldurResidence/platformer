@@ -1,6 +1,8 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-#include <iostream>
+#include <animation.hpp>
+#include <algorithm>
+#include <cmath>
 
 const float SHAPE_RADIUS = 50.f;
 const float GRAVITY = 1500.f;        
@@ -8,11 +10,16 @@ const float MAX_SPEED_X = 600.f;
 const float ACCELERATION = 2000.f;   
 const float FRICTION = 0.8f;    
 const float JUMP_POWER = -700.f;     
-const float JUMP_DURATION = 0.5f;    
+const float JUMP_DURATION = 0.5f;  
+const int SPRITE_WIDTH = 50;
+const int SPRITE_HEIGHT = 85;
 
 class Player {
 private:
-    sf::CircleShape shape;
+
+    sf::Texture texture;
+    sf::Sprite sprite;
+
     float posX, posY;   
     float velX, velY;   
     
@@ -26,9 +33,14 @@ private:
     bool canDoubleJump;
     float jumpTimer;
 
+    Animation walkAnim;
+    Animation idleAnim;
+    Animation* currentAnim = nullptr;
+    bool facingRight = true;
+
 public:
 
-    Player(const float& startX, const float& startY) {
+    Player(const float& startX, const float& startY) : sprite(texture) {
         setPosition(startX, startY);
         setVelocity(0,0);
         setGravity(GRAVITY);
@@ -37,11 +49,20 @@ public:
         setFriction(FRICTION);
         setJumpPower(JUMP_POWER);
         setJumpTimer(0.f);
-
-        shape.setRadius(SHAPE_RADIUS);
-        shape.setOrigin(sf::Vector2f(SHAPE_RADIUS, SHAPE_RADIUS));
-        shape.setPosition(sf::Vector2f(posX, posY));
+        // init animations BEFORE using them in initSprite
+        walkAnim = Animation("Walk.png", 7, SPRITE_WIDTH, SPRITE_HEIGHT, 50, 50, 125, 0.1f);
+        idleAnim = Animation("Idle.png", 1, SPRITE_WIDTH, SPRITE_HEIGHT, 50, 50, 0, 0.2f);
+        currentAnim = &idleAnim;
+        initSprite();
     }
+
+
+    void initSprite() {
+        currentAnim->applyTo(sprite);
+        sprite.setOrigin(sf::Vector2f(25.f, 42.5f)); // половины 50x85
+        sprite.setPosition(sf::Vector2f(posX, posY));
+    }
+
 
     //обработчик кнопок, dt~0.016 
     void handleInput(const float& dt) {
@@ -80,8 +101,21 @@ public:
 
         posX += velX * dt;
         posY += velY * dt;
-        
-        shape.setPosition(sf::Vector2f( posX, posY));
+
+        sprite.setPosition(sf::Vector2f(posX, posY));
+
+        // Выбор анимации
+        if (isOnGround && std::fabs(velX) > 5.f) currentAnim = &walkAnim;
+        else currentAnim = &idleAnim;
+
+        // Обновить и применить кадр
+        currentAnim->update(dt);
+        currentAnim->applyTo(sprite);
+
+        // Отразить по X при движении влево
+        if (velX > 1.f) facingRight = true;
+        else if (velX < -1.f) facingRight = false;
+        sprite.setScale(sf::Vector2f(facingRight ? 1.f : -1.f, 1.f));
     }
 
     void jump() {
@@ -93,10 +127,10 @@ public:
     void applyObstructionCollision(const float& obsX, const float& obsY, 
         const float& obsW,const float& obsH) {
             
-        float playerLeft = posX - SHAPE_RADIUS;
-        float playerRight = posX + SHAPE_RADIUS;
-        float playerTop = posY - SHAPE_RADIUS;
-        float playerBottom = posY + SHAPE_RADIUS;
+        float playerLeft = posX - SPRITE_WIDTH/2;
+        float playerRight = posX + SPRITE_WIDTH/2;
+        float playerTop = posY - SPRITE_HEIGHT/2;
+        float playerBottom = posY + SPRITE_HEIGHT/2;
         
         float obstacleLeft = obsX;
         float obstacleRight = obsX + obsW;
@@ -117,21 +151,21 @@ public:
             std::min( overlapTop, overlapBottom));
             
             if (minOverlap == overlapTop) {
-                posY = obstacleTop - SHAPE_RADIUS; 
+                posY = obstacleTop - SPRITE_HEIGHT/2; 
                 velY = 0;
                 isOnGround = true;
                 canDoubleJump = true;
             }
             else if (minOverlap == overlapBottom) {
-                posY = obstacleBottom + SHAPE_RADIUS;
+                posY = obstacleBottom + SPRITE_HEIGHT/2;
                 velY = 0;
             }
             else if (minOverlap == overlapLeft) {
-                posX = obstacleLeft - SHAPE_RADIUS;
+                posX = obstacleLeft - SPRITE_WIDTH/2;
                 velX = 0;
             }
             else if (minOverlap == overlapRight) {
-                posX = obstacleRight + SHAPE_RADIUS;
+                posX = obstacleRight + SPRITE_WIDTH/2;
                 velX = 0;
             }
         }
@@ -143,7 +177,7 @@ public:
 
     void applyFloorCollision(float floorHeight) {
         if (posY + SHAPE_RADIUS > floorHeight) {
-            posY = floorHeight - SHAPE_RADIUS;
+            posY = floorHeight - SPRITE_HEIGHT/2;
             velY = 0;
             isOnGround = true;
             canDoubleJump = true;
@@ -151,18 +185,18 @@ public:
     }
     
     void applyWallCollision(float leftBound, float rightBound) {
-        if (posX - SHAPE_RADIUS < leftBound) {
-            posX = leftBound + SHAPE_RADIUS;
+        if (posX - SPRITE_WIDTH/2 < leftBound) {
+            posX = leftBound + SPRITE_WIDTH/2;
             velX = 0;
         }
-        else if (posX + SHAPE_RADIUS > rightBound) {
-            posX = rightBound - SHAPE_RADIUS;
+        else if (posX + SPRITE_WIDTH/2 > rightBound) {
+            posX = rightBound - SPRITE_WIDTH/2;
             velX = 0;
         }
     }
     
 
-    sf::CircleShape& getShape() { return shape; }
+    sf::Sprite& getSprite() { return sprite; }
     float getPositionX() const { return posX; }
     float getPositionY() const { return posY; }
     float getVelocityX() const { return velX; }
@@ -170,11 +204,10 @@ public:
     bool getIsOnGround() const { return isOnGround; }
 
 
-
     void setPosition(float x, float y) {
         posX = x;
         posY = y;
-        shape.setPosition(sf::Vector2f(posX, posY));
+        sprite.setPosition(sf::Vector2f(posX, posY));
     }
     void setVelocity(float vx, float vy) {
         velX = vx;

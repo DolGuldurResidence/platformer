@@ -15,7 +15,7 @@ private:
     std::string title;
     Player player;
     Obstruction floor;
-    
+
 public:
 
         Game(unsigned int width, unsigned int height, const std::string& title) :
@@ -27,8 +27,6 @@ public:
             window.create(sf::VideoMode({width, height}), title);
             window.setFramerateLimit(60);
             player = Player(0, SCREEN_HEIGHT - 100);
-
-
         }
 
         void lifeCycle(){
@@ -51,9 +49,11 @@ public:
                 player.applyObstructionCollision(jumpPad.getPositionX(), jumpPad.getPositionY(), 100, 20);
                 player.applyFloorCollision(SCREEN_HEIGHT);
                 player.applyWallCollision(0, SCREEN_WIDTH);
-            
+
+
                 window.clear();
-                window.draw(player.getShape());
+                //window.draw(walkAnim.move());
+                window.draw(player.getSprite());
                 window.draw(jumpPad.getShape());
                 window.display();
             }

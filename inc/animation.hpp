@@ -1,46 +1,73 @@
 #pragma once 
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <stdexcept>
 
 const std::string GLOBAL_PATH = "C:\\Users\\study\\projects\\cmake-sfml-project-master\\pics";
-const float FRAME_DURATION = 0.1f; 
+
 
 class Animation {
 private:
     sf::Texture texture;
-    sf::Clock animationClock;
-    sf::IntRect intRect;
-    sf::Sprite sprite;
-    std::string subPath;
-public:
-    Animation(const std::string& subPath) : sprite(texture) {
-        setTexture(subPath);
-    }
+    sf::IntRect frameRect;
+    int totalFrames = 1;
+    int frameWidth = 0;
+    int frameHeight = 0;
+    int startX = 0;
+    int startY = 0;
+    int stepX = 0; 
+    int currentFrame = 0; 
+    float frameDurationSec = 0.1f; 
+    float timer = 0.f; 
 
+public:
+    Animation() = default;
+
+    Animation(const std::string& subPath,
+        int frames,
+        int frameWidth,
+        int frameHeight,
+        int startX,
+        int startY,
+        int stepX,
+        float frameDurationSec) 
+    : totalFrames(frames),
+    frameWidth(frameWidth),
+    frameHeight(frameHeight),
+    startX(startX), 
+    startY(startY),
+    stepX(stepX), 
+    frameDurationSec(frameDurationSec)
+    {
+    setTexture(subPath);
+    frameRect = sf::IntRect({startX, startY}, {frameWidth, frameHeight});
+    }
+    
     void setTexture(const std::string& subPath) {
-        std:: string fullPath = GLOBAL_PATH + "\\" + subPath;
-        if(!texture.loadFromFile(fullPath)){
+        std::string fullPath = GLOBAL_PATH + "\\" + subPath;
+        if (!texture.loadFromFile(fullPath)) {
             throw std::runtime_error("Failed to load texture: " + subPath);
         }
-
     }
 
-    void update(int& currentFrame, const int& totalFrames, const int& lenght,
-         const int& startX, const int& startY, const int& step ){
-        
-        float elapsed = animationClock.getElapsedTime().asSeconds();
-        if(elapsed < FRAME_DURATION){
-            animationClock.restart();
+    void reset(){
+        currentFrame = 0;
+        timer = 0.f;
+        frameRect = sf::IntRect({startX, startY}, {frameWidth, frameHeight});
+    }
+
+    void update(float dt){
+        timer += dt;
+        if(timer >= frameDurationSec){
+            timer -= frameDurationSec;
             currentFrame = (currentFrame + 1) % totalFrames;
-            int newLeft = startX + (currentFrame * (step));
-            intRect = sf::IntRect({newLeft, startX },{startY, lenght});
-            sprite.setTextureRect(intRect);
+            int left = startX + currentFrame * stepX;
+            frameRect = sf::IntRect({left, startY}, {frameWidth, frameHeight});
         }
-
     }
 
-    sf::Sprite move(){
-        int currentFrame = 0;
-        update(currentFrame, 7, 85, 50, 50, 125);
+    void applyTo(sf::Sprite& sprite){
+        sprite.setTexture(texture);
+        sprite.setTextureRect(frameRect);
     }
 };
